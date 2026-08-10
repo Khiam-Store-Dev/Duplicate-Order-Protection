@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مراقبة الأوردرات المكررة — Khiam</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     §STYLES
+     ══════════════════════════════════════════════════════ -->
+<style>
+:root {
+  --bg:             #f3f4f6;
+  --surface:        #ffffff;
+  --surface-2:      #f9fafb;
+  --border:         #e5e7eb;
+  --border-strong:  #d1d5db;
+  --text-primary:   #111827;
+  --text-secondary: #6b7280;
+  --text-muted:     #6b7280;
+  --accent:         #2563eb;
+  --accent-light:   #eff6ff;
+  --accent-dark:    #1d4ed8;
+  --green:          #16a34a;
+  --green-light:    #f0fdf4;
+  --green-border:   #86efac;
+  --red:            #dc2626;
+  --red-light:      #fef2f2;
+  --red-border:     #fca5a5;
+  --amber:          #d97706;
+  --amber-light:    #fffbeb;
+  --purple:         #7c3aed;
+  --purple-light:   #f5f3ff;
+  --purple-border:  #c4b5fd;
+  --radius:         12px;
+  --radius-sm:      8px;
+  --shadow:         0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --font-body:      'Noto Sans Arabic', -apple-system, sans-serif;
+  --font-mono:      'IBM Plex Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 12px;
+  direction: rtl;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Header ─────────────────────────────────────────── */
+.app-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; margin-bottom: 12px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.app-title { display: flex; align-items: center; gap: 10px; }
+.app-icon { font-size: 22px; }
+.app-title-text h1 { font-size: 15px; font-weight: 700; line-height: 1.2; }
+.app-title-text span { font-size: 11px; color: var(--text-muted); }
+.app-header-btns { display: flex; align-items: center; gap: 6px; }
+.hbtn { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border: 1.5px solid var(--border-strong); background: var(--surface); border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.hbtn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.hbtn:disabled { opacity: .5; cursor: not-allowed; }
+.hbtn.settings-configured { border-color: var(--green); color: var(--green); background: var(--green-light); }
+.hbtn.ver-btn { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; font-family: var(--font-mono); font-weight: 700; }
+.hbtn.ver-btn:hover { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+.hbtn .ico { display: inline-block; }
+.hbtn.refreshing .ico { animation: hbtn-spin .7s linear infinite; }
+@keyframes hbtn-spin { to { transform: rotate(360deg); } }
+
+/* ── Settings / Changelog / About Modals ───────────────── */
+.settings-overlay, .changelog-overlay, .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 400; display: none; align-items: center; justify-content: center; padding: 20px; }
+.settings-overlay.open, .changelog-overlay.open, .modal-overlay.open { display: flex; }
+.settings-modal, .changelog-modal, .modal-box { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18); animation: modalIn .2s ease; overflow: hidden; }
+.changelog-modal { max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; }
+.modal-box { max-width: 640px; max-height: 82vh; display: flex; flex-direction: column; }
+@keyframes modalIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.settings-modal-hdr, .changelog-modal-hdr, .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 700; flex-shrink: 0; }
+.modal-close-x, .modal-close { background: none; border: none; font-size: 16px; line-height: 1; cursor: pointer; padding: 3px 7px; border-radius: var(--radius-sm); color: var(--red); transition: background .15s; }
+.modal-close-x:hover, .modal-close:hover { background: var(--red-light); }
+.settings-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.settings-field { display: flex; flex-direction: column; gap: 5px; }
+.settings-label { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.settings-input { border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px 11px; font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); outline: none; width: 100%; direction: ltr; background: var(--surface); transition: border-color .15s; }
+.settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
+.settings-modal-ftr { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+.btn-modal-cancel { padding: 8px 14px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; cursor: pointer; }
+.btn-modal-cancel:hover { color: var(--text-primary); }
+.btn-modal-save { padding: 8px 18px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s; }
+.btn-modal-save:hover { background: var(--accent-dark); }
+.modal-body { overflow-y: auto; padding: 0 20px 20px; }
+.changelog-body { overflow-y: auto; padding: 20px; flex: 1; }
+.cl-version-block { margin-bottom: 4px; }
+.cl-version-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cl-ver-badge { font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 5px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; direction: ltr; }
+.cl-ver-badge.old { background: var(--surface-2); color: var(--text-secondary); border-color: var(--border-strong); }
+.cl-ver-date { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); direction: ltr; }
+.cl-items { list-style: none; display: flex; flex-direction: column; gap: 5px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.cl-version-block:last-child .cl-items { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+.cl-item { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+.cl-tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
+.cl-tag.new { background: #f0fdf4; color: #15803d; }
+.cl-tag.fix { background: #fef2f2; color: #dc2626; }
+.cl-tag.change { background: #fffbeb; color: #92400e; }
+
+/* ── About Modal content ────────────────────────────────── */
+.about-summary { padding: 10px 14px; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--text-primary); background: var(--surface-2); border-radius: 8px; list-style: none; display: flex; align-items: center; gap: 6px; user-select: none; }
+.about-summary::-webkit-details-marker { display: none; }
+details[open] > .about-summary { border-radius: 8px 8px 0 0; }
+.about-body { border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; padding: 14px 16px; font-size: 13px; line-height: 1.75; }
+.about-desc { color: var(--text-primary); margin: 0 0 12px; }
+.about-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 6px; }
+.about-steps { display: flex; flex-direction: column; gap: 8px; }
+.about-step { display: flex; gap: 10px; align-items: flex-start; }
+.about-num { min-width: 22px; height: 22px; background: var(--accent); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; }
+.about-endpoints { display: flex; flex-direction: column; gap: 6px; }
+.about-ep { display: flex; gap: 10px; align-items: baseline; font-size: 13px; }
+.about-ep code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 7px; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+.about-code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; overflow-x: auto; white-space: pre; direction: ltr; text-align: left; line-height: 1.65; color: var(--text-primary); margin: 0; }
+
+/* ── Toast ──────────────────────────────────────────────── */
+.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.2); animation: toastIn .3s ease; max-width: 320px; }
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast-success { background: var(--green); } .toast-error { background: var(--red); } .toast-neutral { background: #1a1d27; }
+
+/* ── Not-configured banner ──────────────────────────────── */
+.not-configured { background: var(--amber-light); border: 1px solid #fde68a; color: #92400e; border-radius: var(--radius); padding: 14px 18px; margin-bottom: 12px; font-size: 13px; display: none; align-items: center; justify-content: space-between; gap: 10px; }
+.not-configured.show { display: flex; }
+.not-configured button { flex-shrink: 0; }
+
+/* ── Shared date-range filter + freshness row ───────────── */
+.controls-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.range-frow { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+.range-fg { display:flex; flex-direction:column; gap:3px; }
+.range-flabel { font-size:10px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
+.range-date-wrap input[type=date] { width:150px; height:34px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:6px 10px; font-family:var(--font-mono); font-size:12px; color:var(--text-primary); background:var(--surface); outline:none; cursor:pointer; }
+.range-preset-wrap { position:relative; }
+.range-preset-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:600; color:var(--text-secondary); background:var(--surface); cursor:pointer; height:34px; white-space:nowrap; }
+.range-preset-btn.has-preset { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+.range-preset-menu { position:absolute; top:calc(100% + 4px); right:0; background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius-sm); box-shadow:0 4px 20px rgba(0,0,0,.12); z-index:200; min-width:170px; padding:4px; display:none; max-height: 320px; overflow-y: auto; }
+.range-preset-menu.open { display:block; }
+.range-preset-item { padding:7px 12px; font-size:12px; cursor:pointer; border-radius:6px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.range-preset-item:hover { background:var(--surface-2); }
+.range-preset-item.active { background:var(--accent-light); color:var(--accent); }
+.range-preset-item .pr-check { font-size:11px; color:var(--accent); display:none; }
+.range-preset-item.active .pr-check { display:block; }
+.range-preset-sep { height:1px; background:var(--border); margin:3px 4px; }
+
+.freshness { display: flex; align-items: center; gap: 8px; }
+.freshness-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.freshness-text { font-size: 11.5px; font-weight: 600; color: var(--green); white-space: nowrap; }
+.refresh-btn { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--surface); cursor: pointer; height: 34px; }
+.refresh-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.refresh-btn.spinning .ico { display:inline-block; animation: hbtn-spin .7s linear infinite; }
+
+/* ── Segmented main tabs ────────────────────────────────── */
+.main-tabs-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.main-seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 10px; padding: 4px; gap: 3px; }
+.main-seg-btn { display: flex; align-items: center; gap: 6px; padding: 8px 22px; border-radius: 7px; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border: none; background: transparent; transition: all .15s; white-space: nowrap; }
+.main-seg-btn.active { background: #2563eb; color: #fff; box-shadow: 0 2px 6px rgba(37,99,235,.3); }
+.main-seg-btn:not(.active):hover { background: var(--accent-light); color: var(--accent); }
+
+/* ── KPI Cards ──────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 1400px) { .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px)  { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px)  { .kpi-grid { grid-template-columns: 1fr; } }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+.kpi-label { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }
+.kpi-value-row { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 6px; }
+.kpi-value { font-size: 21px; font-weight: 700; font-family: var(--font-mono); direction: ltr; }
+.kpi-value-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 700; direction: ltr; padding: 1px 7px; border-radius: 20px; background: var(--surface-2); color: var(--text-secondary); }
+.kpi-card[data-state="neutral"] .kpi-value-pct { background: var(--accent-light); color: var(--accent-dark); }
+.kpi-card[data-state="good"]    .kpi-value, .kpi-card[data-state="good"] .kpi-value-pct    { color: var(--green); background: var(--green-light); }
+.kpi-card[data-state="bad"]     .kpi-value, .kpi-card[data-state="bad"] .kpi-value-pct     { color: var(--red); background: var(--red-light); }
+.kpi-card[data-state="warning"] .kpi-value, .kpi-card[data-state="warning"] .kpi-value-pct { color: var(--amber); background: var(--amber-light); }
+.kpi-card[data-state="good"] .kpi-value, .kpi-card[data-state="bad"] .kpi-value, .kpi-card[data-state="warning"] .kpi-value { background: none; padding: 0; }
+.kpi-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── Data tables (customer stats + duplicate log) ──────── */
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.table-wrap-hdr { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; gap: 8px; }
+.table-wrap-title { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.stat-chip { font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; }
+.stat-chip strong { color: var(--text-primary); }
+.export-btn { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border: 1px solid var(--green-border); border-radius: var(--radius-sm); font-family: inherit; font-size: 11.5px; font-weight: 600; color: var(--green); background: var(--green-light); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.export-btn:hover { background: var(--green); color: #fff; }
+.export-btn:disabled { opacity: .5; pointer-events: none; }
+.search-input-wrap { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.search-input { width: 260px; max-width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 11px; font-family: inherit; font-size: 12.5px; color: var(--text-primary); background: var(--surface); outline: none; }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
+.details-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.details-table thead th { background: var(--surface-2); font-weight: 700; color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: .3px; padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--border); }
+.details-table tbody td { padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.details-table thead th, .details-table tbody td { border-inline-start: 1px solid var(--border); }
+.details-table thead th:first-child, .details-table tbody td:first-child { border-inline-start: none; }
+.details-table tbody tr:hover { background: var(--surface-2); }
+.col-mono { font-family: var(--font-mono); direction: ltr; white-space: nowrap; }
+.col-links { max-width: 320px; }
+.col-links a { margin: 0 3px; }
+.table-empty, .table-loading, .table-error { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.table-error { color: var(--red); }
+.table-error button { margin-top: 10px; }
+.loading-spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.retry-btn { padding: 7px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.retry-btn:hover { border-color: var(--accent); color: var(--accent); }
+details.err-details { margin-top: 8px; }
+details.err-details summary { cursor: pointer; font-size: 11px; color: var(--text-muted); }
+details.err-details pre { font-family: var(--font-mono); font-size: 10.5px; text-align: left; direction: ltr; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 6px; overflow-x: auto; }
+
+/* ── Health warning chips row ──────────────────────────── */
+.health-note { font-size: 11px; color: var(--text-muted); padding: 8px 16px; border-top: 1px dashed var(--border); }
+
+/* ── Pagination ─────────────────────────────────────────── */
+.pagination-bar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.page-btn { padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
+.page-info { font-size: 12px; color: var(--text-secondary); font-family: var(--font-mono); direction: ltr; }
+</style>
+
+<!-- ══════════════════════════════════════════════════════
+     §SHELL — header + settings/changelog/about modals + toast
+     ══════════════════════════════════════════════════════ -->
+<div class="app-header">
+  <div class="app-title">
+    <div class="app-icon">🔁</div>
+    <div class="app-title-text">
+      <h1>مراقبة الأوردرات المكررة</h1>
+      <span>Khiam — duplicate-order-protection</span>
+    </div>
+  </div>
+  <div class="app-header-btns">
+    <button class="hbtn" onclick="openAbout()">ℹ️ عن الأداة</button>
+    <button class="hbtn ver-btn" onclick="openChangelog()">v1.0.0 📋</button>
+    <button class="hbtn" id="settingsBtn" onclick="openSettings()">⚙️ الإعدادات</button>
+  </div>
+</div>
+
+<!-- Settings Modal — WORKER URL + WORKER SECRET بس (بدون ADMIN WORKER URL
+     ولا لوجن موظفين — الأداة دي 🔓 بدون تسجيل دخول، راجع قسم "تشريح الكود"
+     في ℹ️ عن الأداة لتفاصيل القرار) -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsOnBackdrop(event)">
+  <div class="settings-modal">
+    <div class="settings-modal-hdr">
+      ⚙️ الإعدادات
+      <button class="modal-close-x" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-modal-body">
+      <div class="settings-field">
+        <label class="settings-label">WORKER URL</label>
+        <input type="text" class="settings-input" id="cfgUrl" />
+      </div>
+      <div class="settings-field">
+        <label class="settings-label">WORKER SECRET</label>
+        <input type="password" class="settings-input" id="cfgSecret" />
+      </div>
+    </div>
+    <div class="settings-modal-ftr">
+      <button class="btn-modal-cancel" onclick="closeSettings()">إلغاء</button>
+      <button class="btn-modal-save" onclick="saveSettings()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Changelog Modal -->
+<div class="changelog-overlay" id="changelogOverlay" onclick="closeChangelogOnBackdrop(event)">
+  <div class="changelog-modal">
+    <div class="changelog-modal-hdr">
+      📋 سجل التحديثات
+      <button class="modal-close-x" onclick="closeChangelog()">✕</button>
+    </div>
+    <div class="changelog-body">
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge">v1.0.0</span>
+          <span class="cl-ver-date">10-08-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>إطلاق الأداة — قسم إحصائيات (KPI + إحصائيات عملاء) وقسم سجل الأوردرات المكررة، فوق Worker v1.1.0</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- About Modal -->
+<div id="aboutOverlay" class="modal-overlay" onclick="if(event.target===this)closeAbout()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>ℹ️ عن الأداة — مراقبة الأوردرات المكررة</span>
+      <button class="modal-close" onclick="closeAbout()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <details open style="margin-top:16px;">
+        <summary class="about-summary">📋 وصف الأداة</summary>
+        <div class="about-body">
+          <p class="about-desc">
+            واجهة عرض فقط فوق Worker <code>duplicate-order-checker</code> — مفيش أي كتابة
+            على شوبيفاي من هنا. الهدف: متابعة أداء نظام كشف الأوردرات المكررة (اللي بيشتغل
+            تلقائيًا عن طريق webhook) من غير الرجوع لـ D1 Console يدويًا.
+          </p>
+
+          <div class="about-label">المستخدمون</div>
+          <p>أحمد — لمتابعة صحة الويبهوك وحجم التكرار في المتجر.</p>
+
+          <div class="about-label">كيف تعمل</div>
+          <div class="about-steps">
+            <div class="about-step"><span class="about-num">1</span><span>اختار الفترة الزمنية (فترة سريعة أو من/إلى تاريخ) — بتتشارك بين التابين.</span></div>
+            <div class="about-step"><span class="about-num">2</span><span>تاب "الإحصائيات": أرقام عامة عن الفترة + قايمة العملاء اللي اتكرر معاهم الأوردر، مرتبة الأكتر تكرارًا أولاً.</span></div>
+            <div class="about-step"><span class="about-num">3</span><span>تاب "السجل": قايمة الأوردرات اللي اتحددت كتكرار فعليًا (مش كل الأوردرات) — مع رابط مباشر لكل أوردر في شوبيفاي.</span></div>
+            <div class="about-step"><span class="about-num">4</span><span>كل البيانات بتتقرأ حية من D1 وقت الطلب — مفيش cache، فمفيش "بيانات قديمة" بمعنى الكلمة، لكن الرقم المعروض على الشاشة بيفضل زي ما هو لحد ما تضغط تحديث أو تغيّر الفترة.</span></div>
+          </div>
+
+          <div class="about-label">الـ Endpoints الرئيسية</div>
+          <div class="about-endpoints">
+            <div class="about-ep"><code>get_stats</code><span>أرقام الفترة + إحصائيات العملاء (GET، dateFrom/dateTo)</span></div>
+            <div class="about-ep"><code>get_logs</code><span>صفحة من الأوردرات المكررة (type=duplicate_found)</span></div>
+            <div class="about-ep"><code>get_logs_count</code><span>إجمالي عدد النتائج للـ pagination</span></div>
+            <div class="about-ep"><code>get_logs_export</code><span>تصدير XLSX (حتى 2000 صف)</span></div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-top:8px;">
+        <summary class="about-summary">🔧 تشريح الكود</summary>
+        <div class="about-body">
+          <pre class="about-code">FEATURE MAP
+──────────────────────────────────────────────────────────────
+Feature                        │ File    │ §Section    │ fn/action
+──────────────────────────────────────────────────────────────
+بطاقات KPI + إحصائيات عملاء    │ HTML    │ §DASHBOARD  │ get_stats
+جدول الأوردرات المكررة         │ HTML    │ §LOG        │ get_logs
+Pagination (100/صفحة)          │ HTML    │ §LOG        │ get_logs_count
+تصدير XLSX (سجل)               │ HTML    │ §LOG-JS     │ get_logs_export
+تصدير XLSX (عملاء)             │ HTML    │ §DASH-JS    │ exportCustomerStatsXLSX (client-side)
+فلتر تاريخ مشترك بين التابين   │ HTML    │ §DASHBOARD  │ onRangeApplied
+
+KEY VARIABLES (HTML)
+LS_URL    = 'dup_monitor_worker_url'
+LS_SECRET = 'dup_monitor_worker_secret'
+
+NOTES
+- 🔓 بدون تسجيل دخول موظفين (قرار متخذ مع أحمد) — WORKER_SECRET بس. عشان
+  كده Settings Modal هنا فيها WORKER URL + WORKER SECRET بس، من غير
+  ADMIN WORKER URL (مفيش employees list تتحمّل أصلاً).
+- إحصائيات العملاء (رقم التليفون/الاسم) بتتبني من extra.customerPhone
+  اللي بدأ Worker v1.1.0 يسجّله وقت duplicate_found. أي أوردر تكرار
+  اتسجل قبل v1.1.0 هيتحسب في "إجمالي الأوردرات المكررة" لكن مش هيظهر في
+  قايمة العملاء (مفيش رقم تليفون مخزّن ليه).
+- "إجمالي الأوردرات المعالجة" = COUNT(DISTINCT order_id) بـ
+  type IN (checked_clear, duplicate_found, skipped) — مش عدّ صفوف عادي،
+  عشان retries من شوبيفاي بتضيف صف skipped إضافي لنفس الأوردر.
+- روابط الأوردرات بتتبني بصيغة
+  admin.shopify.com/store/xjaug9-1g/orders/{id} — لازم يتحدّث لو
+  الدومين اتغيّر.
+- الأداة دي بتقرأ من D1 مباشرة (بدون Shopify API وبدون KV cache) —
+  مؤشر الطزاجة بيرصد وقت آخر مرة الشاشة عملت fetch، مش عمر بيانات مخزّنة.</pre>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     §TOOL — محتوى الأداة
+     ══════════════════════════════════════════════════════ -->
+<main>
+
+  <div class="not-configured" id="notConfiguredBanner">
+    <span>⚙️ لسه محتاج تحط Worker URL و Worker Secret عشان الأداة تشتغل.</span>
+    <button class="hbtn" onclick="openSettings()">فتح الإعدادات</button>
+  </div>
+
+  <!-- ─── §DASHBOARD::rangeControls ─── (فلتر تاريخ مشترك بين التابين) -->
+  <div class="controls-bar">
+    <div class="range-frow">
+      <div class="range-fg">
+        <span class="range-flabel">فترة سريعة</span>
+        <div class="range-preset-wrap" id="rangePresetWrap">
+          <button class="range-preset-btn" id="rangePresetBtn" onclick="toggleRangePresetMenu(event)">
+            <span id="rangePresetLabel">⚡ اختار فترة</span><span class="pr-arrow">▾</span>
+          </button>
+          <div class="range-preset-menu" id="rangePresetMenu">
+            <div class="range-preset-item" data-preset="today"       onclick="applyRangePreset('today')">      <span>اليوم</span>        <span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="yesterday"   onclick="applyRangePreset('yesterday')">  <span>أمس</span>          <span class="pr-check">✓</span></div>
+            <div class="range-preset-sep"></div>
+            <div class="range-preset-item" data-preset="last3"       onclick="applyRangePreset('last3')">      <span>آخر 3 أيام</span>   <span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="last7"       onclick="applyRangePreset('last7')">      <span>آخر 7 أيام</span>   <span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="last30"      onclick="applyRangePreset('last30')">     <span>آخر 30 يوم</span>   <span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="last90"      onclick="applyRangePreset('last90')">     <span>آخر 90 يوم</span>   <span class="pr-check">✓</span></div>
+            <div class="range-preset-sep"></div>
+            <div class="range-preset-item" data-preset="thisMonth"   onclick="applyRangePreset('thisMonth')">  <span>الشهر الحالي</span>  <span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="lastMonth"   onclick="applyRangePreset('lastMonth')">  <span>الشهر السابق</span>  <span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="thisQuarter" onclick="applyRangePreset('thisQuarter')"><span>الربع الحالي</span>  <span class="pr-check">✓</span></div>
+            <div class="range-preset-sep"></div>
+            <div class="range-preset-item" data-preset="thisYear"    onclick="applyRangePreset('thisYear')">   <span>العام الحالي</span>  <span class="pr-check">✓</span></div>
+            <div class="range-preset-item" data-preset="lastYear"    onclick="applyRangePreset('lastYear')">   <span>العام السابق</span>  <span class="pr-check">✓</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="range-fg">
+        <span class="range-flabel">من تاريخ</span>
+        <div class="range-date-wrap">
+          <input type="date" id="rangeDateFrom" onclick="this.showPicker&&this.showPicker();" onchange="onRangeDateChange()">
+        </div>
+      </div>
+      <div class="range-fg">
+        <span class="range-flabel">إلى تاريخ</span>
+        <div class="range-date-wrap">
+          <input type="date" id="rangeDateTo" onclick="this.showPicker&&this.showPicker();" onchange="onRangeDateChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="freshness" id="freshnessBar">
+      <span class="freshness-dot"></span>
+      <span class="freshness-text" id="freshnessText">—</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="doRefresh()"><span class="ico">↺</span> تحديث</button>
+    </div>
+  </div>
+
+  <!-- ─── §TOOL::mainTabs ─── -->
+  <div class="main-tabs-wrap">
+    <div class="main-seg">
+      <button class="main-seg-btn active" id="tabBtnStats" onclick="switchMainTab('stats')">📊 الإحصائيات</button>
+      <button class="main-seg-btn" id="tabBtnLog" onclick="switchMainTab('log')">📋 السجل</button>
+    </div>
+  </div>
+
+  <!-- ─── §DASHBOARD (تاب الإحصائيات) ─── -->
+  <section id="statsTab">
+    <div class="kpi-grid" id="kpiGrid">
+      <!-- بيتملى من renderStats() -->
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:12px;">
+      <div class="table-wrap-hdr">
+        <span class="table-wrap-title">👥 إحصائيات العملاء المكررين — الأكتر تكرارًا أولاً</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="stat-chip"><strong id="customerStatsCount">—</strong> عميل</span>
+          <button class="export-btn" id="exportCustomerStatsBtn" onclick="exportCustomerStatsXLSX()" disabled>⬇ تصدير XLSX</button>
+        </div>
+      </div>
+      <div id="customerStatsBody">
+        <div class="table-loading"><div class="loading-spinner"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── §LOG (تاب السجل) ─── -->
+  <section id="logTab" style="display:none;">
+    <div class="table-wrap">
+      <div class="table-wrap-hdr">
+        <span class="table-wrap-title">📋 الأوردرات المكررة المكتشفة</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="stat-chip"><strong id="logTotalCount">—</strong> نتيجة</span>
+          <button class="export-btn" id="exportLogBtn" onclick="exportLogXLSX()" disabled>⬇ تصدير XLSX</button>
+        </div>
+      </div>
+      <div class="search-input-wrap">
+        <input type="text" class="search-input" id="logSearch" placeholder="بحث برقم الأوردر أو الملاحظات..." oninput="onLogSearchInput()">
+      </div>
+      <div id="logTableBody">
+        <div class="table-loading"><div class="loading-spinner"></div></div>
+      </div>
+      <div class="pagination-bar">
+        <button class="page-btn" id="logPrevBtn" onclick="goLogPage(-1)" disabled>‹ السابق</button>
+        <span class="page-info" id="logPageInfo">—</span>
+        <button class="page-btn" id="logNextBtn" onclick="goLogPage(1)" disabled>التالي ›</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ══════════════════════════════════════════════════════
+// §CONFIG
+// ══════════════════════════════════════════════════════
+const LS_URL    = 'dup_monitor_worker_url';
+const LS_SECRET = 'dup_monitor_worker_secret';
+const SHOPIFY_ADMIN_STORE = 'xjaug9-1g'; // من Project Instructions §1 — لو الدومين اتغيّر عدّل هنا
+
+function getConfig() {
+  return {
+    workerUrl:    localStorage.getItem(LS_URL)    || '',
+    workerSecret: localStorage.getItem(LS_SECRET) || '',
+  };
+}
+function isConfigured() {
+  const c = getConfig();
+  return c.workerUrl.startsWith('http') && c.workerSecret.length > 0;
+}
+
+async function apiGet(action, params = {}) {
+  if (!isConfigured()) { updateNotConfiguredBanner(); throw new Error('الإعدادات غير مكتملة'); }
+  const { workerUrl, workerSecret } = getConfig();
+  const qs = new URLSearchParams({ action, ...params });
+  const resp = await fetch(`${workerUrl.replace(/\/$/, '')}?${qs}`, {
+    headers: { 'Authorization': `Bearer ${workerSecret}` },
+  });
+  const data = await resp.json();
+  if (!resp.ok || data.ok === false) throw Object.assign(new Error(data.error || `HTTP ${resp.status}`), { step: data.step, technical: data.technical });
+  return data;
+}
+
+// ══════════════════════════════════════════════════════
+// §SHELL-JS
+// ══════════════════════════════════════════════════════
+function openSettings() {
+  const c = getConfig();
+  document.getElementById('cfgUrl').value    = c.workerUrl    || '';
+  document.getElementById('cfgSecret').value = c.workerSecret || '';
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings()            { document.getElementById('settingsOverlay').classList.remove('open'); }
+function closeSettingsOnBackdrop(e) { if (e.target === e.currentTarget) closeSettings(); }
+function saveSettings() {
+  const url    = document.getElementById('cfgUrl').value.trim();
+  const secret = document.getElementById('cfgSecret').value.trim();
+  if (!url || !secret) { showToast('الرجاء إدخال الـ URL والـ Secret', 'error'); return; }
+  localStorage.setItem(LS_URL,    url.replace(/\/$/, ''));
+  localStorage.setItem(LS_SECRET, secret);
+  updateSettingsBtn();
+  updateNotConfiguredBanner();
+  closeSettings();
+  showToast('تم حفظ الإعدادات ✓', 'success');
+  reloadActiveTab(true);
+}
+function updateSettingsBtn() {
+  document.getElementById('settingsBtn').classList.toggle('settings-configured', isConfigured());
+}
+function updateNotConfiguredBanner() {
+  document.getElementById('notConfiguredBanner').classList.toggle('show', !isConfigured());
+}
+
+function openChangelog()             { document.getElementById('changelogOverlay').classList.add('open'); }
+function closeChangelog()            { document.getElementById('changelogOverlay').classList.remove('open'); }
+function closeChangelogOnBackdrop(e) { if (e.target === e.currentTarget) closeChangelog(); }
+function openAbout()  { document.getElementById('aboutOverlay').classList.add('open'); }
+function closeAbout() { document.getElementById('aboutOverlay').classList.remove('open'); }
+
+function showToast(msg, type = 'neutral', duration = 3000) {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), duration);
+}
+
+// ── Date/Time Utilities (Cairo UTC+3) ──
+function toCairo(iso) { return new Date(new Date(iso).getTime() + 3 * 60 * 60 * 1000); }
+function formatDateTime(iso) {
+  const d = toCairo(iso), pad = n => String(n).padStart(2, '0');
+  let h = d.getUTCHours();
+  const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
+  h = h % 12 || 12;
+  return `${pad(d.getUTCDate())}-${pad(d.getUTCMonth()+1)}-${d.getUTCFullYear()} الساعة ${pad(h)}:${pad(d.getUTCMinutes())} ${ampm}`;
+}
+function formatDate(iso) {
+  const d = toCairo(iso), pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getUTCDate())}-${pad(d.getUTCMonth()+1)}-${d.getUTCFullYear()}`;
+}
+function orderAdminUrl(orderId) { return `https://admin.shopify.com/store/${SHOPIFY_ADMIN_STORE}/orders/${orderId}`; }
+function gidToNumericId(gid) { const m = /\/Order\/(\d+)/.exec(gid || ''); return m ? m[1] : null; }
+
+// ══════════════════════════════════════════════════════
+// §DASHBOARD — فلتر التاريخ المشترك (date-range-filter component)
+// ══════════════════════════════════════════════════════
+const RANGE_PRESET_LABELS = {
+  today:'اليوم', yesterday:'أمس', last3:'آخر 3 أيام',
+  last7:'آخر 7 أيام', last30:'آخر 30 يوم', last90:'آخر 90 يوم',
+  thisMonth:'الشهر الحالي', lastMonth:'الشهر السابق', thisQuarter:'الربع الحالي',
+  thisYear:'العام الحالي', lastYear:'العام السابق',
+};
+let activeRangePreset = '';
+let rangeDebounce = null;
+const state = {
+  dateFrom: null, dateTo: null,
+  activeMainTab: 'stats',
+  statsDirty: true, logDirty: true,
+  statsData: null, customerStatsRows: [],
+  logEntries: [], logPage: 0, logPageSize: 100, logTotal: 0,
+};
+
+function cairoNow() { return new Date(Date.now() + 3 * 60 * 60 * 1000); }
+function cairoDateStr(d) { const pad = n => String(n).padStart(2,'0'); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; }
+function addDays(dateStr, n) { const d = new Date(`${dateStr}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return cairoDateStr(d); }
+
+function toggleRangePresetMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('rangePresetMenu'), btn = document.getElementById('rangePresetBtn');
+  const isOpen = menu.classList.contains('open');
+  menu.classList.toggle('open', !isOpen); btn.classList.toggle('open', !isOpen);
+}
+document.addEventListener('click', () => {
+  document.getElementById('rangePresetMenu')?.classList.remove('open');
+  document.getElementById('rangePresetBtn')?.classList.remove('open');
+});
+
+function computePresetRange(preset) {
+  const now = cairoNow();
+  const today = cairoDateStr(now);
+  switch (preset) {
+    case 'today':      return { from: today, to: today };
+    case 'yesterday':  { const y = addDays(today, -1); return { from: y, to: y }; }
+    case 'last3':        return { from: addDays(today, -2),  to: today };
+    case 'last7':        return { from: addDays(today, -6),  to: today };
+    case 'last30':       return { from: addDays(today, -29), to: today };
+    case 'last90':       return { from: addDays(today, -89), to: today };
+    case 'thisMonth': {
+      const from = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}-01`;
+      return { from, to: today };
+    }
+    case 'lastMonth': {
+      const firstThis = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const lastPrev  = new Date(firstThis); lastPrev.setUTCDate(0);
+      const firstPrev = new Date(Date.UTC(lastPrev.getUTCFullYear(), lastPrev.getUTCMonth(), 1));
+      return { from: cairoDateStr(firstPrev), to: cairoDateStr(lastPrev) };
+    }
+    case 'thisQuarter': {
+      const q = Math.floor(now.getUTCMonth() / 3);
+      return { from: cairoDateStr(new Date(Date.UTC(now.getUTCFullYear(), q * 3, 1))), to: today };
+    }
+    case 'thisYear':    return { from: `${now.getUTCFullYear()}-01-01`, to: today };
+    case 'lastYear':  { const y = now.getUTCFullYear() - 1; return { from: `${y}-01-01`, to: `${y}-12-31` }; }
+    default: return null;
+  }
+}
+
+function applyRangePreset(preset) {
+  document.getElementById('rangePresetMenu').classList.remove('open');
+  document.getElementById('rangePresetBtn').classList.remove('open');
+  const range = computePresetRange(preset);
+  if (!range) return;
+  activeRangePreset = preset;
+  document.getElementById('rangeDateFrom').value = range.from;
+  document.getElementById('rangeDateTo').value   = range.to;
+  document.querySelectorAll('.range-preset-item').forEach(el => el.classList.toggle('active', el.dataset.preset === preset));
+  document.getElementById('rangePresetLabel').textContent = `⚡ ${RANGE_PRESET_LABELS[preset]}`;
+  document.getElementById('rangePresetBtn').classList.add('has-preset');
+  onRangeApplied(range);
+}
+function onRangeDateChange() {
+  activeRangePreset = '';
+  document.querySelectorAll('.range-preset-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('rangePresetLabel').textContent = '⚡ اختار فترة';
+  document.getElementById('rangePresetBtn').classList.remove('has-preset');
+  const fromVal = document.getElementById('rangeDateFrom').value;
+  const toVal   = document.getElementById('rangeDateTo').value;
+  if (!fromVal || !toVal || fromVal > toVal) return;
+  clearTimeout(rangeDebounce);
+  rangeDebounce = setTimeout(() => onRangeApplied({ from: fromVal, to: toVal }), 400);
+}
+function initDateRangeDefault(defaultPreset) {
+  const range = computePresetRange(defaultPreset);
+  activeRangePreset = defaultPreset;
+  document.getElementById('rangeDateFrom').value = range.from;
+  document.getElementById('rangeDateTo').value   = range.to;
+  document.querySelectorAll('.range-preset-item').forEach(el => el.classList.toggle('active', el.dataset.preset === defaultPreset));
+  document.getElementById('rangePresetLabel').textContent = `⚡ ${RANGE_PRESET_LABELS[defaultPreset]}`;
+  document.getElementById('rangePresetBtn').classList.add('has-preset');
+  return range;
+}
+
+// ─── §DASHBOARD::onRangeApplied ─── (CUSTOMIZE — مشترك بين التابين)
+function onRangeApplied(range) {
+  state.dateFrom = range.from;
+  state.dateTo   = range.to;
+  state.statsDirty = true; state.logDirty = true;
+  state.logPage = 0;
+  reloadActiveTab(false);
+}
+
+// ─── §TOOL::switchMainTab ───
+function switchMainTab(tab) {
+  state.activeMainTab = tab;
+  document.getElementById('tabBtnStats').classList.toggle('active', tab === 'stats');
+  document.getElementById('tabBtnLog').classList.toggle('active', tab === 'log');
+  document.getElementById('statsTab').style.display = tab === 'stats' ? 'block' : 'none';
+  document.getElementById('logTab').style.display   = tab === 'log'   ? 'block' : 'none';
+  reloadActiveTab(false);
+}
+function reloadActiveTab(force) {
+  if (!isConfigured()) { updateNotConfiguredBanner(); return; }
+  if (state.activeMainTab === 'stats') {
+    if (force || state.statsDirty) loadStats();
+  } else {
+    if (force || state.logDirty) loadLogPage(0);
+  }
+}
+async function doRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true; btn.classList.add('spinning');
+  try { await reloadActiveTab(true); } finally { btn.disabled = false; btn.classList.remove('spinning'); }
+}
+
+// ─── §DASH-JS::renderFreshness ───
+let lastFetchedAt = null;
+function renderFreshness() {
+  const text = document.getElementById('freshnessText');
+  const dot  = document.querySelector('#freshnessBar .freshness-dot');
+  if (!lastFetchedAt) { text.textContent = 'لسه ماتحملتش بيانات'; dot.style.background = 'var(--text-muted)'; text.style.color = 'var(--text-muted)'; return; }
+  const mins = Math.floor((Date.now() - new Date(lastFetchedAt)) / 60000);
+  let colour, label;
+  if (mins < 1)        { colour = 'var(--green)'; label = 'بيانات حية — اتحدثت الآن'; }
+  else if (mins < 60)  { colour = 'var(--green)'; label = `آخر تحديث: من ${mins} دقيقة`; }
+  else if (mins < 360) { colour = 'var(--amber)'; label = `آخر تحديث: من ${Math.floor(mins/60)} ساعات`; }
+  else                 { colour = 'var(--red)';   label = 'الشاشة ماتحدثتش من فترة — اضغط تحديث'; }
+  dot.style.background = colour; text.style.color = colour; text.textContent = label;
+}
+setInterval(renderFreshness, 60000);
+
+// ─── §DASH-JS::loadStats ───
+async function loadStats() {
+  const kpiGrid = document.getElementById('kpiGrid');
+  const custBody = document.getElementById('customerStatsBody');
+  custBody.innerHTML = '<div class="table-loading"><div class="loading-spinner"></div></div>';
+  document.getElementById('exportCustomerStatsBtn').disabled = true;
+  try {
+    const res = await apiGet('get_stats', { dateFrom: state.dateFrom, dateTo: state.dateTo });
+    state.statsData = res;
+    state.customerStatsRows = res.customerStats || [];
+    state.statsDirty = false;
+    lastFetchedAt = res.fetchedAt || new Date().toISOString();
+    renderFreshness();
+    renderKpis(res);
+    renderCustomerStatsTable(state.customerStatsRows);
+  } catch (e) {
+    kpiGrid.innerHTML = '';
+    custBody.innerHTML = `<div class="table-error">⚠️ فشل تحميل الإحصائيات — ${e.message}
+      <div><button class="retry-btn" onclick="loadStats()">إعادة المحاولة</button></div>
+      ${e.technical ? `<details class="err-details"><summary>تفاصيل تقنية</summary><pre>${e.technical}</pre></details>` : ''}
+    </div>`;
+  }
+}
+
+// ─── §DASH-JS::renderKpis ───
+function renderKpis(res) {
+  const fmtInt = v => Math.round(v || 0).toLocaleString('en-US');
+  const fmtPct = v => `${(v || 0).toFixed(1)}%`;
+  const custCount = state.customerStatsRows.length;
+  const avgRepeats = custCount > 0 ? res.duplicatesFound / custCount : 0;
+
+  const cards = [
+    { label: 'إجمالي الأوردرات المعالجة', value: fmtInt(res.totalOrders), state: 'neutral' },
+    { label: 'الأوردرات المكررة المكتشفة', value: fmtInt(res.duplicatesFound), pct: fmtPct(res.detectionRate), state: res.duplicatesFound > 0 ? 'warning' : 'good' },
+    { label: 'عملاء لهم أكتر من تكرار', value: fmtInt(custCount), state: custCount > 0 ? 'warning' : 'good' },
+    { label: 'متوسط التكرار لكل عميل', value: avgRepeats.toFixed(1), state: 'neutral' },
+    { label: 'Scan Capped ⚠️', value: fmtInt(res.scanCappedCount), state: res.scanCappedCount > 0 ? 'bad' : 'good', sub: 'مسح وصل للحد الأقصى قبل ما يخلّص' },
+    { label: 'HMAC Failed 🔒', value: fmtInt(res.hmacFailedCount), state: res.hmacFailedCount > 0 ? 'bad' : 'good', sub: 'محاولات توقيع فاشلة على الويبهوك' },
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = cards.map(c => `
+    <div class="kpi-card" data-state="${c.state}">
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value-row">
+        <div class="kpi-value">${c.value}</div>
+        ${c.pct ? `<span class="kpi-value-pct">${c.pct}</span>` : ''}
+      </div>
+      ${c.sub ? `<div class="kpi-sub">${c.sub}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ─── §DASH-JS::renderCustomerStatsTable ───
+function renderCustomerStatsTable(rows) {
+  const wrap = document.getElementById('customerStatsBody');
+  document.getElementById('customerStatsCount').textContent = rows.length.toLocaleString('en-US');
+  document.getElementById('exportCustomerStatsBtn').disabled = rows.length === 0;
+
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="table-empty">لا توجد بيانات عملاء مكررين في الفترة المحددة</div>';
+    return;
+  }
+
+  const rowsHtml = rows.map(r => {
+    const ordersHtml = r.orders.map(o => `<a href="${orderAdminUrl(o.id)}" target="_blank" rel="noopener">${o.name}</a>`).join('، ');
+    return `<tr>
+      <td class="col-mono">${r.phone}</td>
+      <td>${r.name || '—'}</td>
+      <td class="col-mono">${r.count.toLocaleString('en-US')}</td>
+      <td class="col-mono">${formatDate(r.firstDetectedAt)}</td>
+      <td class="col-mono">${formatDate(r.lastDetectedAt)}</td>
+      <td class="col-links">${ordersHtml}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<div style="overflow-x:auto;"><table class="details-table">
+    <thead><tr>
+      <th>رقم التليفون</th><th>الاسم</th><th>عدد مرات التكرار</th>
+      <th>أول اكتشاف</th><th>آخر اكتشاف</th><th>الأوردرات</th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table></div>`;
+}
+
+// ─── §DASH-JS::exportCustomerStatsXLSX ───
+async function exportCustomerStatsXLSX() {
+  const rows = state.customerStatsRows;
+  if (!rows.length) return;
+  try {
+    const wb = new ExcelJS.Workbook();
+    wb.views = [{ rightToLeft: true }];
+    const ws = wb.addWorksheet('إحصائيات العملاء');
+    ws.views = [{ state: 'frozen', ySplit: 1, rightToLeft: true }];
+    ws.columns = [
+      { header: 'رقم التليفون', key: 'phone', width: 18 },
+      { header: 'الاسم', key: 'name', width: 24 },
+      { header: 'عدد مرات التكرار', key: 'count', width: 16 },
+      { header: 'أول اكتشاف', key: 'first', width: 16 },
+      { header: 'آخر اكتشاف', key: 'last', width: 16 },
+      { header: 'الأوردرات', key: 'orders', width: 40 },
+    ];
+    rows.forEach(r => ws.addRow({
+      phone: r.phone, name: r.name || '', count: r.count,
+      first: formatDate(r.firstDetectedAt), last: formatDate(r.lastDetectedAt),
+      orders: r.orders.map(o => o.name).join(', '),
+    }));
+    ws.eachRow((row, idx) => { if (idx === 1) return; row.eachCell(c => { if (typeof c.value === 'number') c.numFmt = '#,##0'; }); });
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = `customer-stats-${state.dateFrom}-to-${state.dateTo}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+    showToast(`تم تصدير ${rows.length} عميل ✓`, 'success');
+  } catch (err) { showToast('خطأ في التصدير: ' + err.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════
+// §LOG-JS — جدول الأوردرات المكررة (type=duplicate_found)
+// ══════════════════════════════════════════════════════
+let logSearchDebounce = null;
+function onLogSearchInput() { clearTimeout(logSearchDebounce); logSearchDebounce = setTimeout(() => loadLogPage(0), 300); }
+
+async function loadLogPage(page) {
+  const body = document.getElementById('logTableBody');
+  body.innerHTML = '<div class="table-loading"><div class="loading-spinner"></div></div>';
+  document.getElementById('exportLogBtn').disabled = true;
+  const search = document.getElementById('logSearch').value.trim();
+
+  try {
+    const countRes = await apiGet('get_logs_count', { type: 'duplicate_found', dateFrom: state.dateFrom, dateTo: state.dateTo, search: search || undefined });
+    state.logTotal = countRes.total || 0;
+
+    const offset = page * state.logPageSize;
+    const logRes = await apiGet('get_logs', { type: 'duplicate_found', dateFrom: state.dateFrom, dateTo: state.dateTo, search: search || undefined, limit: state.logPageSize, offset });
+    state.logEntries = logRes.entries || [];
+    state.logPage = page;
+    state.logDirty = false;
+
+    renderLogTable(state.logEntries);
+    renderLogPagination();
+    document.getElementById('logTotalCount').textContent = state.logTotal.toLocaleString('en-US');
+    document.getElementById('exportLogBtn').disabled = state.logTotal === 0;
+  } catch (e) {
+    body.innerHTML = `<div class="table-error">⚠️ فشل تحميل السجل — ${e.message}
+      <div><button class="retry-btn" onclick="loadLogPage(${page})">إعادة المحاولة</button></div>
+      ${e.technical ? `<details class="err-details"><summary>تفاصيل تقنية</summary><pre>${e.technical}</pre></details>` : ''}
+    </div>`;
+    document.getElementById('logTotalCount').textContent = '—';
+  }
+}
+
+function renderLogTable(entries) {
+  const body = document.getElementById('logTableBody');
+  if (!entries.length) {
+    body.innerHTML = '<div class="table-empty">لا توجد أوردرات مكررة في الفترة/البحث المحدد</div>';
+    return;
+  }
+  const rowsHtml = entries.map(e => {
+    let extra = {};
+    try { extra = e.extra ? JSON.parse(e.extra) : {}; } catch { extra = {}; }
+    const matches = extra.matches || [];
+    const matchesHtml = matches.map(m => {
+      const numId = gidToNumericId(m.id);
+      return numId ? `<a href="${orderAdminUrl(numId)}" target="_blank" rel="noopener">${m.name}</a>` : m.name;
+    }).join('، ');
+    const phone = extra.customerPhone || '—';
+    return `<tr>
+      <td class="col-mono"><a href="${orderAdminUrl(e.order_id)}" target="_blank" rel="noopener">${e.order_name || e.order_id}</a></td>
+      <td class="col-links">${matchesHtml || '—'}</td>
+      <td class="col-mono">${phone}</td>
+      <td class="col-mono">${e.timestamp ? formatDateTime(e.timestamp) : '—'}</td>
+      <td>${e.notes || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `<div style="overflow-x:auto;"><table class="details-table">
+    <thead><tr>
+      <th>الأوردر</th><th>الأوردرات المشابهة</th><th>رقم التليفون</th><th>التاريخ والوقت</th><th>ملاحظات</th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table></div>`;
+}
+
+function renderLogPagination() {
+  const totalPages = Math.max(1, Math.ceil(state.logTotal / state.logPageSize));
+  const current = state.logPage + 1;
+  document.getElementById('logPageInfo').textContent = `صفحة ${current} من ${totalPages}`;
+  document.getElementById('logPrevBtn').disabled = state.logPage <= 0;
+  document.getElementById('logNextBtn').disabled = current >= totalPages;
+}
+function goLogPage(delta) {
+  const totalPages = Math.max(1, Math.ceil(state.logTotal / state.logPageSize));
+  const next = state.logPage + delta;
+  if (next < 0 || next >= totalPages) return;
+  loadLogPage(next);
+}
+
+async function exportLogXLSX() {
+  const search = document.getElementById('logSearch').value.trim();
+  try {
+    const res = await apiGet('get_logs_export', { type: 'duplicate_found', dateFrom: state.dateFrom, dateTo: state.dateTo, search: search || undefined });
+    const entries = res.entries || [];
+    if (!entries.length) { showToast('لا توجد بيانات للتصدير', 'error'); return; }
+
+    const wb = new ExcelJS.Workbook();
+    wb.views = [{ rightToLeft: true }];
+    const ws = wb.addWorksheet('الأوردرات المكررة');
+    ws.views = [{ state: 'frozen', ySplit: 1, rightToLeft: true }];
+    ws.columns = [
+      { header: 'الأوردر', key: 'order', width: 14 },
+      { header: 'الأوردرات المشابهة', key: 'matches', width: 30 },
+      { header: 'رقم التليفون', key: 'phone', width: 16 },
+      { header: 'التاريخ', key: 'date', width: 14 },
+      { header: 'الوقت', key: 'time', width: 14 },
+      { header: 'ملاحظات', key: 'notes', width: 40 },
+    ];
+    entries.forEach(e => {
+      let extra = {};
+      try { extra = e.extra ? JSON.parse(e.extra) : {}; } catch { extra = {}; }
+      const matches = (extra.matches || []).map(m => m.name).join(', ');
+      ws.addRow({
+        order: e.order_name || e.order_id,
+        matches,
+        phone: extra.customerPhone || '',
+        date: e.timestamp ? formatDate(e.timestamp) : '',
+        time: e.timestamp ? formatDateTime(e.timestamp).split(' الساعة ')[1] : '',
+        notes: e.notes || '',
+      });
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = `duplicate-orders-${state.dateFrom}-to-${state.dateTo}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+    showToast(`تم تصدير ${entries.length} أوردر ✓`, 'success');
+  } catch (e) { showToast('خطأ في التصدير: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════
+updateSettingsBtn();
+updateNotConfiguredBanner();
+const initialRange = initDateRangeDefault('thisMonth'); // ⚠️ استثناء متفق عليه مع أحمد — الافتراضي القياسي "اليوم"
+state.dateFrom = initialRange.from;
+state.dateTo   = initialRange.to;
+if (isConfigured()) { loadStats(); } else { renderFreshness(); }
+</script>
+
+</body>
+</html>
